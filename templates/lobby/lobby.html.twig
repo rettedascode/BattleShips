@@ -1,0 +1,220 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Lobby - Battleship{% endblock %}
+
+{% block body %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Game Lobby</h4>
+                <span class="badge bg-primary">{{ user.points }} points</span>
+            </div>
+            <div class="card-body">
+                {% if activeGame %}
+                    <div class="alert alert-info">
+                        <h5>Active Game</h5>
+                        <p>You have an active game in progress.</p>
+                        <a href="{{ path('game_play', {'id': activeGame.id}) }}" class="btn btn-primary">Continue Game</a>
+                    </div>
+                {% else %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Quick Match</h5>
+                                    <p class="card-text">Find a random opponent instantly</p>
+                                    <button id="findMatchBtn" class="btn btn-primary btn-lg">Find Match</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Private Game</h5>
+                                    <p class="card-text">Create a game and invite a friend</p>
+                                    <button id="createPrivateBtn" class="btn btn-outline-primary btn-lg">Create Private Game</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+
+                {% if availableGames %}
+                <div class="mt-4">
+                    <h5>Available Games</h5>
+                    <div class="list-group">
+                        {% for game in availableGames %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Game #{{ game.id }}</strong>
+                                <br>
+                                <small class="text-muted">Created by {{ game.player1.username }}</small>
+                            </div>
+                            <button class="btn btn-sm btn-outline-primary join-game-btn" data-game-id="{{ game.id }}">Join</button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Your Stats</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h4 class="text-success">{{ user.wins }}</h4>
+                        <small class="text-muted">Wins</small>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-danger">{{ user.losses }}</h4>
+                        <small class="text-muted">Losses</small>
+                    </div>
+                </div>
+                <hr>
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h4 class="text-primary">{{ user.gamesPlayed }}</h4>
+                        <small class="text-muted">Games</small>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-warning">{{ user.hitCountTotal }}</h4>
+                        <small class="text-muted">Total Hits</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if gameHistory %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">Recent Games</h5>
+            </div>
+            <div class="card-body">
+                {% for game in gameHistory %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <small class="text-muted">Game #{{ game.id }}</small>
+                        <br>
+                        <span class="badge bg-{{ game.status == 'FINISHED' ? (game.winnerUserId == user.id ? 'success' : 'danger') : 'secondary' }}">
+                            {{ game.status }}
+                        </span>
+                    </div>
+                    <small class="text-muted">{{ game.createdAt|date('M j, H:i') }}</small>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const findMatchBtn = document.getElementById('findMatchBtn');
+    const createPrivateBtn = document.getElementById('createPrivateBtn');
+    const joinGameBtns = document.querySelectorAll('.join-game-btn');
+
+    if (findMatchBtn) {
+        findMatchBtn.addEventListener('click', function() {
+            this.disabled = true;
+            this.textContent = 'Finding match...';
+            
+            fetch('{{ path('find_match') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = data.redirect;
+                } else {
+                    alert('Error: ' + data.error);
+                    this.disabled = false;
+                    this.textContent = 'Find Match';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while finding a match');
+                this.disabled = false;
+                this.textContent = 'Find Match';
+            });
+        });
+    }
+
+    if (createPrivateBtn) {
+        createPrivateBtn.addEventListener('click', function() {
+            this.disabled = true;
+            this.textContent = 'Creating...';
+            
+            fetch('{{ path('create_private_game') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Private game created! Share this link: ' + window.location.origin + data.inviteUrl);
+                    window.location.href = data.inviteUrl;
+                } else {
+                    alert('Error: ' + data.error);
+                    this.disabled = false;
+                    this.textContent = 'Create Private Game';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while creating a private game');
+                this.disabled = false;
+                this.textContent = 'Create Private Game';
+            });
+        });
+    }
+
+    joinGameBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const gameId = this.dataset.gameId;
+            this.disabled = true;
+            this.textContent = 'Joining...';
+            
+            fetch('{{ path('join_private_game', {'id': '__GAME_ID__') }}'.replace('__GAME_ID__', gameId), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = data.redirect;
+                } else {
+                    alert('Error: ' + data.error);
+                    this.disabled = false;
+                    this.textContent = 'Join';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while joining the game');
+                this.disabled = false;
+                this.textContent = 'Join';
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Welcome to Battleship{% endblock %}
+
+{% block body %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="text-center mb-5">
+            <h1 class="display-4">🚢 Battleship</h1>
+            <p class="lead">The classic naval combat game with modern multiplayer features</p>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">🎮 Play Online</h5>
+                        <p class="card-text">Challenge players from around the world in real-time battleship matches.</p>
+                        <a href="{{ path('register') }}" class="btn btn-primary btn-lg">Get Started</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">🏆 Rankings</h5>
+                        <p class="card-text">Compete for the top spot on the global leaderboard.</p>
+                        <a href="{{ path('leaderboard') }}" class="btn btn-outline-primary btn-lg">View Rankings</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">How to Play</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <h6>1. Place Your Fleet</h6>
+                                <p>Position your 5 ships on a 10x10 grid. Ships cannot overlap or extend outside the board.</p>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>2. Take Turns</h6>
+                                <p>Players alternate turns, calling out coordinates to attack. Hit or miss, the turn passes to your opponent.</p>
+                            </div>
+                            <div class="col-md-4">
+                                <h6>3. Win the Battle</h6>
+                                <p>First player to sink all opponent ships wins! Earn points and climb the leaderboard.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if not app.user %}
+        <div class="text-center mt-5">
+            <a href="{{ path('login') }}" class="btn btn-outline-secondary me-2">Login</a>
+            <a href="{{ path('register') }}" class="btn btn-primary">Register</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

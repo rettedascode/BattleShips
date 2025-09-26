@@ -1,0 +1,153 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Leaderboard - Battleship{% endblock %}
+
+{% block body %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">🏆 Global Leaderboard</h4>
+            </div>
+            <div class="card-body">
+                {% if leaderboard %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Player</th>
+                                <th>Points</th>
+                                <th>Wins</th>
+                                <th>Losses</th>
+                                <th>Win Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for snapshot in leaderboard %}
+                            <tr class="{% if app.user and snapshot.user.id == app.user.id %}table-primary{% endif %}">
+                                <td>
+                                    <strong>
+                                        {% if loop.index == 1 %}🥇
+                                        {% elseif loop.index == 2 %}🥈
+                                        {% elseif loop.index == 3 %}🥉
+                                        {% else %}#{{ loop.index }}
+                                        {% endif %}
+                                    </strong>
+                                </td>
+                                <td>
+                                    <strong>{{ snapshot.user.username }}</strong>
+                                    {% if app.user and snapshot.user.id == app.user.id %}
+                                    <span class="badge bg-primary">You</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-success">{{ snapshot.points }}</span>
+                                </td>
+                                <td>{{ snapshot.wins }}</td>
+                                <td>{{ snapshot.losses }}</td>
+                                <td>
+                                    <div class="progress" style="width: 100px; height: 20px;">
+                                        <div class="progress-bar" role="progressbar" 
+                                             style="width: {{ (snapshot.winRate * 100)|round }}%"
+                                             aria-valuenow="{{ (snapshot.winRate * 100)|round }}" 
+                                             aria-valuemin="0" aria-valuemax="100">
+                                            {{ (snapshot.winRate * 100)|round }}%
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    {% if prevPage %}
+                    <a href="{{ path('leaderboard', {'page': prevPage}) }}" class="btn btn-outline-primary">← Previous</a>
+                    {% else %}
+                    <div></div>
+                    {% endif %}
+
+                    <span class="text-muted">Page {{ currentPage }}</span>
+
+                    {% if nextPage %}
+                    <a href="{{ path('leaderboard', {'page': nextPage}) }}" class="btn btn-outline-primary">Next →</a>
+                    {% else %}
+                    <div></div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <h5 class="text-muted">No players found</h5>
+                    <p class="text-muted">Be the first to play and appear on the leaderboard!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h4 class="text-primary">{{ stats.totalPlayers }}</h4>
+                        <small class="text-muted">Total Players</small>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-success">{{ stats.averagePoints }}</h4>
+                        <small class="text-muted">Avg Points</small>
+                    </div>
+                </div>
+                
+                {% if stats.topPlayer %}
+                <hr>
+                <div class="text-center">
+                    <h6>Top Player</h6>
+                    <strong>{{ stats.topPlayer.user.username }}</strong>
+                    <br>
+                    <span class="badge bg-warning">{{ stats.topPlayer.points }} points</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if userRanking %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">Your Ranking</h5>
+            </div>
+            <div class="card-body text-center">
+                <h2 class="text-primary">#{{ userRanking }}</h2>
+                <p class="text-muted">Global Position</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">How Rankings Work</h5>
+            </div>
+            <div class="card-body">
+                <h6>Scoring System:</h6>
+                <ul class="list-unstyled">
+                    <li>✅ <strong>Win:</strong> +20 points + remaining ships</li>
+                    <li>❌ <strong>Loss:</strong> +5 points (if ≥5 hits)</li>
+                    <li>🚫 <strong>Forfeit:</strong> -10 points</li>
+                </ul>
+                
+                <h6>Ranking Criteria:</h6>
+                <ol>
+                    <li>Total Points</li>
+                    <li>Win Rate</li>
+                    <li>Recent Activity</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

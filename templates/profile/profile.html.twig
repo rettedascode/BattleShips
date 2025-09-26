@@ -1,0 +1,210 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Profile - {{ user.username }}{% endblock %}
+
+{% block body %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">{{ user.username }}'s Profile</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Game Statistics</h5>
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="text-center p-3 bg-success bg-opacity-10 rounded">
+                                    <h3 class="text-success mb-0">{{ user.wins }}</h3>
+                                    <small class="text-muted">Wins</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-center p-3 bg-danger bg-opacity-10 rounded">
+                                    <h3 class="text-danger mb-0">{{ user.losses }}</h3>
+                                    <small class="text-muted">Losses</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-3">
+                            <div class="col-6">
+                                <div class="text-center p-3 bg-primary bg-opacity-10 rounded">
+                                    <h3 class="text-primary mb-0">{{ user.gamesPlayed }}</h3>
+                                    <small class="text-muted">Games Played</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-center p-3 bg-warning bg-opacity-10 rounded">
+                                    <h3 class="text-warning mb-0">{{ user.hitCountTotal }}</h3>
+                                    <small class="text-muted">Total Hits</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h5>Performance</h5>
+                        <div class="mb-3">
+                            <label class="form-label">Win Rate</label>
+                            <div class="progress" style="height: 25px;">
+                                <div class="progress-bar" role="progressbar" 
+                                     style="width: {{ (winRate * 100)|round }}%"
+                                     aria-valuenow="{{ (winRate * 100)|round }}" 
+                                     aria-valuemin="0" aria-valuemax="100">
+                                    {{ (winRate * 100)|round }}%
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Current Points</label>
+                            <div class="input-group">
+                                <span class="input-group-text">🏆</span>
+                                <input type="text" class="form-control" value="{{ user.points }}" readonly>
+                            </div>
+                        </div>
+                        
+                        {% if userRanking %}
+                        <div class="mb-3">
+                            <label class="form-label">Global Ranking</label>
+                            <div class="input-group">
+                                <span class="input-group-text">#</span>
+                                <input type="text" class="form-control" value="{{ userRanking }}" readonly>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Account Information</h5>
+                        <table class="table table-sm">
+                            <tr>
+                                <td><strong>Username:</strong></td>
+                                <td>{{ user.username }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Email:</strong></td>
+                                <td>{{ user.email }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Member Since:</strong></td>
+                                <td>{{ user.createdAt|date('F j, Y') }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Last Updated:</strong></td>
+                                <td>{{ user.updatedAt|date('F j, Y g:i A') }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h5>Achievements</h5>
+                        <div class="row">
+                            {% if user.wins >= 1 %}
+                            <div class="col-6 mb-2">
+                                <div class="text-center p-2 bg-warning bg-opacity-10 rounded">
+                                    <span class="fs-4">🏆</span>
+                                    <br>
+                                    <small>First Win</small>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if user.wins >= 10 %}
+                            <div class="col-6 mb-2">
+                                <div class="text-center p-2 bg-success bg-opacity-10 rounded">
+                                    <span class="fs-4">🎖️</span>
+                                    <br>
+                                    <small>10 Wins</small>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if user.wins >= 50 %}
+                            <div class="col-6 mb-2">
+                                <div class="text-center p-2 bg-primary bg-opacity-10 rounded">
+                                    <span class="fs-4">👑</span>
+                                    <br>
+                                    <small>50 Wins</small>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if user.points >= 100 %}
+                            <div class="col-6 mb-2">
+                                <div class="text-center p-2 bg-info bg-opacity-10 rounded">
+                                    <span class="fs-4">💯</span>
+                                    <br>
+                                    <small>100 Points</small>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ path('lobby') }}" class="btn btn-primary">Play Game</a>
+                    <a href="{{ path('leaderboard') }}" class="btn btn-outline-primary">View Leaderboard</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">Performance Summary</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h6 class="text-success">{{ user.wins }}</h6>
+                        <small class="text-muted">Wins</small>
+                    </div>
+                    <div class="col-6">
+                        <h6 class="text-danger">{{ user.losses }}</h6>
+                        <small class="text-muted">Losses</small>
+                    </div>
+                </div>
+                <hr>
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h6 class="text-primary">{{ user.gamesPlayed }}</h6>
+                        <small class="text-muted">Games</small>
+                    </div>
+                    <div class="col-6">
+                        <h6 class="text-warning">{{ user.hitCountTotal }}</h6>
+                        <small class="text-muted">Hits</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if userRanking and userRanking <= 10 %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">🏆 Top Player</h5>
+            </div>
+            <div class="card-body text-center">
+                <h2 class="text-warning">#{{ userRanking }}</h2>
+                <p class="text-muted">You're in the top 10!</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

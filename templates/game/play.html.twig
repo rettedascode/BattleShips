@@ -1,0 +1,461 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Game #{{ game.id }} - Battleship{% endblock %}
+
+{% block stylesheets %}
+<style>
+.game-board {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 1px;
+    background: #333;
+    padding: 10px;
+    border-radius: 5px;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.cell {
+    aspect-ratio: 1;
+    background: #87CEEB;
+    border: 1px solid #4682B4;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    transition: all 0.2s;
+}
+
+.cell:hover {
+    background: #98D8E8;
+}
+
+.cell.ship {
+    background: #2E8B57;
+}
+
+.cell.hit {
+    background: #FF6B6B;
+}
+
+.cell.miss {
+    background: #D3D3D3;
+}
+
+.cell.sunk {
+    background: #8B0000;
+}
+
+.ship-placement {
+    background: #F0F8FF;
+    border: 2px solid #4682B4;
+}
+
+.placement-mode .cell {
+    cursor: crosshair;
+}
+
+.placement-mode .cell:hover {
+    background: #98D8E8;
+    border: 2px solid #4682B4;
+}
+
+.game-info {
+    background: #f8f9fa;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.turn-indicator {
+    font-size: 1.2em;
+    font-weight: bold;
+    padding: 10px;
+    border-radius: 5px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.turn-indicator.your-turn {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.turn-indicator.opponent-turn {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.fleet-info {
+    background: #e9ecef;
+    border-radius: 5px;
+    padding: 15px;
+    margin-top: 20px;
+}
+
+.ship-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.ship-item:last-child {
+    border-bottom: none;
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="game-info">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h4>Game #{{ game.id }}</h4>
+                        <p class="mb-0">
+                            <strong>Status:</strong> 
+                            <span class="badge bg-{{ game.status == 'IN_PROGRESS' ? 'success' : (game.status == 'FINISHED' ? 'secondary' : 'warning') }}">
+                                {{ game.status }}
+                            </span>
+                        </p>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <a href="{{ path('lobby') }}" class="btn btn-outline-secondary">Back to Lobby</a>
+                        {% if game.status == 'IN_PROGRESS' %}
+                        <button id="surrenderBtn" class="btn btn-outline-danger ms-2">Surrender</button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <h5>Your Board</h5>
+            <div id="userBoard" class="game-board"></div>
+            <div id="userFleetInfo" class="fleet-info">
+                <h6>Your Fleet</h6>
+                <div id="userFleetList"></div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <h5>Opponent's Board</h5>
+            <div id="opponentBoard" class="game-board"></div>
+            <div id="opponentFleetInfo" class="fleet-info">
+                <h6>Opponent's Fleet</h6>
+                <div id="opponentFleetList"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div id="turnIndicator" class="turn-indicator">
+                Loading game state...
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Game Log</h5>
+                </div>
+                <div class="card-body">
+                    <div id="gameLog" style="max-height: 200px; overflow-y: auto;">
+                        <p class="text-muted">Game starting...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+class BattleshipGame {
+    constructor() {
+        this.gameId = {{ game.id }};
+        this.userId = {{ user.id }};
+        this.gameState = null;
+        this.pollingInterval = null;
+        this.placementMode = false;
+        this.selectedShip = null;
+        this.selectedOrientation = 'H';
+        
+        this.init();
+    }
+
+    init() {
+        this.loadGameState();
+        this.setupEventListeners();
+        this.startPolling();
+    }
+
+    setupEventListeners() {
+        document.getElementById('surrenderBtn')?.addEventListener('click', () => this.surrender());
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'r' || e.key === 'R') {
+                this.rotateShip();
+            }
+        });
+    }
+
+    async loadGameState() {
+        try {
+            const response = await fetch(`/game/${this.gameId}/state`);
+            const data = await response.json();
+            
+            if (data.error) {
+                console.error('Error loading game state:', data.error);
+                return;
+            }
+            
+            this.gameState = data;
+            this.renderGame();
+        } catch (error) {
+            console.error('Error loading game state:', error);
+        }
+    }
+
+    renderGame() {
+        this.renderBoards();
+        this.renderTurnIndicator();
+        this.renderFleetInfo();
+        this.renderGameLog();
+    }
+
+    renderBoards() {
+        this.renderBoard('userBoard', this.gameState.userBoard, true);
+        this.renderBoard('opponentBoard', this.gameState.opponentBoard, false);
+    }
+
+    renderBoard(containerId, board, isOwnBoard) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = '';
+        
+        if (!board) return;
+        
+        for (let y = 0; y < board.height; y++) {
+            for (let x = 0; x < board.width; x++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.x = x;
+                cell.dataset.y = y;
+                
+                if (isOwnBoard) {
+                    // Show own ships
+                    const ship = this.getShipAt(board.fleet, x, y);
+                    if (ship) {
+                        cell.classList.add('ship');
+                        if (ship.hits && ship.hits.some(hit => hit[0] === x && hit[1] === y)) {
+                            cell.classList.add('hit');
+                        }
+                        if (ship.sunk) {
+                            cell.classList.add('sunk');
+                        }
+                    }
+                } else {
+                    // Show opponent's board with only hit/miss info
+                    const ship = this.getShipAt(board.fleet, x, y);
+                    if (ship && ship.hits) {
+                        const isHit = ship.hits.some(hit => hit[0] === x && hit[1] === y);
+                        if (isHit) {
+                            cell.classList.add(ship.sunk ? 'sunk' : 'hit');
+                        }
+                    }
+                    
+                    // Check for moves at this position
+                    const move = this.gameState.moves.find(m => m.x === x && m.y === y);
+                    if (move) {
+                        if (move.result === 'MISS') {
+                            cell.classList.add('miss');
+                        }
+                    }
+                }
+                
+                // Add click handlers
+                if (this.gameState.status === 'PLACEMENT' && isOwnBoard) {
+                    cell.addEventListener('click', () => this.handlePlacementClick(x, y));
+                } else if (this.gameState.status === 'IN_PROGRESS' && !isOwnBoard && this.gameState.isCurrentTurn) {
+                    cell.addEventListener('click', () => this.handleAttackClick(x, y));
+                }
+                
+                container.appendChild(cell);
+            }
+        }
+    }
+
+    renderTurnIndicator() {
+        const indicator = document.getElementById('turnIndicator');
+        
+        if (this.gameState.status === 'PLACEMENT') {
+            indicator.textContent = 'Place your ships to start the game';
+            indicator.className = 'turn-indicator';
+        } else if (this.gameState.status === 'IN_PROGRESS') {
+            if (this.gameState.isCurrentTurn) {
+                indicator.textContent = `Your turn! (${this.gameState.remainingTime}s remaining)`;
+                indicator.className = 'turn-indicator your-turn';
+            } else {
+                indicator.textContent = 'Waiting for opponent...';
+                indicator.className = 'turn-indicator opponent-turn';
+            }
+        } else if (this.gameState.status === 'FINISHED') {
+            if (this.gameState.winner === this.userId) {
+                indicator.textContent = '🎉 You won!';
+                indicator.className = 'turn-indicator your-turn';
+            } else {
+                indicator.textContent = '😞 You lost!';
+                indicator.className = 'turn-indicator opponent-turn';
+            }
+        }
+    }
+
+    renderFleetInfo() {
+        this.renderFleetList('userFleetList', this.gameState.userBoard?.fleet || []);
+        this.renderFleetList('opponentFleetList', this.gameState.opponentBoard?.fleet || []);
+    }
+
+    renderFleetList(containerId, fleet) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = '';
+        
+        fleet.forEach(ship => {
+            const shipItem = document.createElement('div');
+            shipItem.className = 'ship-item';
+            
+            const status = ship.sunk ? 'Sunk' : (ship.hits?.length > 0 ? 'Damaged' : 'Intact');
+            const statusClass = ship.sunk ? 'text-danger' : (ship.hits?.length > 0 ? 'text-warning' : 'text-success');
+            
+            shipItem.innerHTML = `
+                <span>${ship.type} (${ship.size})</span>
+                <span class="${statusClass}">${status}</span>
+            `;
+            
+            container.appendChild(shipItem);
+        });
+    }
+
+    renderGameLog() {
+        const log = document.getElementById('gameLog');
+        log.innerHTML = '';
+        
+        this.gameState.moves.forEach(move => {
+            const logEntry = document.createElement('p');
+            logEntry.className = 'mb-1';
+            
+            const result = move.result === 'HIT' ? '🎯 Hit' : 
+                          move.result === 'SUNK' ? '💥 Sunk' : '💧 Miss';
+            
+            logEntry.textContent = `${result} at ${String.fromCharCode(65 + move.x)}${move.y + 1}`;
+            log.appendChild(logEntry);
+        });
+        
+        log.scrollTop = log.scrollHeight;
+    }
+
+    getShipAt(fleet, x, y) {
+        return fleet.find(ship => 
+            ship.cells.some(cell => cell[0] === x && cell[1] === y)
+        );
+    }
+
+    handlePlacementClick(x, y) {
+        // Ship placement logic would go here
+        console.log('Placement click:', x, y);
+    }
+
+    async handleAttackClick(x, y) {
+        if (!this.gameState.isCurrentTurn) return;
+        
+        try {
+            const response = await fetch(`/game/${this.gameId}/move`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ x, y })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.addLogEntry(`${data.result === 'HIT' ? '🎯 Hit' : data.result === 'SUNK' ? '💥 Sunk' : '💧 Miss'} at ${String.fromCharCode(65 + x)}${y + 1}`);
+                this.loadGameState();
+            } else {
+                alert('Error: ' + data.error);
+            }
+        } catch (error) {
+            console.error('Error making move:', error);
+            alert('An error occurred while making the move');
+        }
+    }
+
+    async surrender() {
+        if (!confirm('Are you sure you want to surrender?')) return;
+        
+        try {
+            const response = await fetch(`/game/${this.gameId}/surrender`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                window.location.href = data.redirect;
+            } else {
+                alert('Error: ' + data.error);
+            }
+        } catch (error) {
+            console.error('Error surrendering:', error);
+            alert('An error occurred while surrendering');
+        }
+    }
+
+    addLogEntry(message) {
+        const log = document.getElementById('gameLog');
+        const entry = document.createElement('p');
+        entry.className = 'mb-1';
+        entry.textContent = message;
+        log.appendChild(entry);
+        log.scrollTop = log.scrollHeight;
+    }
+
+    startPolling() {
+        this.pollingInterval = setInterval(() => {
+            this.loadGameState();
+        }, 3000);
+    }
+
+    stopPolling() {
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
+        }
+    }
+
+    rotateShip() {
+        this.selectedOrientation = this.selectedOrientation === 'H' ? 'V' : 'H';
+        console.log('Ship orientation:', this.selectedOrientation);
+    }
+}
+
+// Initialize the game when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    new BattleshipGame();
+});
+</script>
+{% endblock %}
