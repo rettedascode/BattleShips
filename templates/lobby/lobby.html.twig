@@ -191,7 +191,7 @@ document.addEventListener('DOMContentLoaded', function() {
             this.disabled = true;
             this.textContent = 'Joining...';
             
-            fetch('{{ path('join_private_game', {'id': '__GAME_ID__') }}'.replace('__GAME_ID__', gameId), {
+            fetch('{{ path('join_private_game', {'id': 'PLACEHOLDER'}) }}'.replace('PLACEHOLDER', gameId), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

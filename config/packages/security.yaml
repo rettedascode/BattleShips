@@ -21,6 +21,8 @@ security:
                 check_path: login
                 default_target_path: lobby
                 enable_csrf: true
+                username_parameter: email
+                password_parameter: password
             logout:
                 path: logout
                 target: home
